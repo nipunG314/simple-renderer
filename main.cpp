@@ -4,38 +4,42 @@
 #include <iomanip>
 #include <fstream>
 #include "CImg.h"
+#include "Eigen/Dense"
+
+#define Vector3 Eigen::Vector3f
 
 const unsigned char red[] = {255, 0, 0}, green[] = {0, 255, 0}, blue[] = {0, 0, 255};
 
-struct Vertex {
-    float x;
-    float y;
-    float z;
-};
+typedef Vector3 Vertex;
 
 struct Face {
-    Vertex* v1;
-    Vertex* v2;
-    Vertex* v3;
+    Vertex v1;
+    Vertex v2;
+    Vertex v3;
 };
 
-void getVertex(Vertex* v, std::string s);
+struct Mesh {
+    std::vector<Vertex> vertices;
+    std::vector<Face> faces;
+};
 
-void getFace(Face* f, std::string s, std::vector<Vertex*>* vertices);
+struct Camera {
+    Vector3* position;
+    Vector3* view_dir;
+    float inclination;
+};
 
-void loadOBJFile(std::string s, std::vector<Vertex*>* vertices, std::vector<Face*>* faces);
+const Vertex& getVertex(std::string s);
 
-void joinVertices(Vertex* v1, Vertex* v2, cimg_library::CImg<unsigned char> image);
+const Face& getFace(std::string s, std::vector<Vertex>* vertices);
+
+const Mesh& loadOBJFile(std::string s);
 
 int main() {
     cimg_library::CImg<unsigned char> image(800, 600, 1, 3, 0);
-    image.draw_line(-100, -100, 200, 300, red);
     cimg_library::CImgDisplay main_disp(image, "Main");
 
-    std::vector<Vertex*>* vertices;
-    std::vector<Face*>* faces;
-
-    loadOBJFile("icoSphere.obj", vertices, faces);
+    const Mesh& mesh = loadOBJFile("icoSphere.obj");
 
     while(!main_disp.is_closed()) {
         main_disp.wait();
@@ -44,29 +48,42 @@ int main() {
     return 0;
 }
 
-void getVertex(Vertex* v, std::string s) {
+const Vertex& getVertex(std::string s) {
     std::string::size_type az;
     std::string::size_type bz;
 
-    v->x = std::stof(s, &az);
-    v->y = std::stof(s.substr(az), &bz);
-    v->z = std::stof(s.substr(bz)); 
+    float x, y, z;
+
+    x = std::stof(s, &az);
+    y = std::stof(s.substr(az), &bz);
+    z = std::stof(s.substr(bz));
+
+    const Vertex& v = Vector3::Constant(x, y, z);
+    return v; 
 }
 
-void getFace(Face* f, std::string s, std::vector<Vertex*>* vertices) {
+const Face& getFace(std::string s, std::vector<Vertex>* vertices) {
     std::string::size_type az;
 
-    f->v1 = vertices->at(std::stoi(s)-1);
+    Vertex v1, v2, v3;
+
+    v1 = vertices->at(std::stoi(s)-1);
     s = s.substr(s.find(" ")+1);
 
-    f->v2 = vertices->at(std::stoi(s)-1);
+    v2 = vertices->at(std::stoi(s)-1);
     s = s.substr(s.find(" ")+1);
     
-    f->v3 = vertices->at(std::stoi(s)-1);
+    v3 = vertices->at(std::stoi(s)-1);
     s = s.substr(s.find(" ")+1);
+
+    const Face& f = { v1, v2, v3 };
+    return f;
 }
 
-void loadOBJFile(std::string s, std::vector<Vertex*>* vertices, std::vector<Face*>* faces) {
+const Mesh& loadOBJFile(std::string s) {
+    std::vector<Vertex> vertices;
+    std::vector<Face> faces;
+
     std::ifstream infile;
     std::string readLine;
     infile.open(s.c_str());
@@ -74,24 +91,15 @@ void loadOBJFile(std::string s, std::vector<Vertex*>* vertices, std::vector<Face
     while(infile) {
         std::getline(infile, readLine);
         if (readLine.at(0) == 'v' && readLine.at(1) == ' ') {
-            Vertex* v = new Vertex;
-            getVertex(v, readLine.substr(2));
-            vertices->push_back(v);
+            const Vertex& v = getVertex(readLine.substr(2));
+            vertices.push_back(v);
         }
         else if (readLine.at(0) == 'f' && readLine.at(1) == ' ') {
-            Face* f = new Face;
-            getFace(f, readLine.substr(2), vertices);
-            faces->push_back(f);
+            const Face& f = getFace(readLine.substr(2), &vertices);
+            faces.push_back(f);
         }
     }
 
-}
+    const Mesh& = { vertices, faces };
 
-void joinVertices(Vertex* v1, Vertex* v2, cimg_library::CImg<unsigned char> image) {
-    int x0 = (v1->x+1.);
-    int y0 = (v1->y+1.);
-    int x1 = (v1->x+1.);
-    int y1 = (v1->y+1.);
-    
-    image.draw_line(x0, y0, x1, y1, red);
 }
