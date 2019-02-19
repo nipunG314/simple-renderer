@@ -21,7 +21,9 @@ struct Face {
 
 void getVertex(Vertex* v, std::string s);
 
-void getFace(Face* f, std::string s, std::vector<Vertex*> vertices);
+void getFace(Face* f, std::string s, std::vector<Vertex*>* vertices);
+
+void loadOBJFile(std::string s, std::vector<Vertex*>* vertices, std::vector<Face*>* faces);
 
 void joinVertices(Vertex* v1, Vertex* v2, cimg_library::CImg<unsigned char> image);
 
@@ -30,26 +32,10 @@ int main() {
     image.draw_line(-100, -100, 200, 300, red);
     cimg_library::CImgDisplay main_disp(image, "Main");
 
-    std::ifstream infile;
-    std::string strOneLine;
-    infile.open("icoSphere.obj");
+    std::vector<Vertex*>* vertices;
+    std::vector<Face*>* faces;
 
-    std::vector<Vertex*> vertices;
-    std::vector<Face*> faces;
-
-    while(infile) {
-        std::getline(infile, strOneLine);
-        if (strOneLine.at(0) == 'v' && strOneLine.at(1) == ' ') {
-            Vertex* v = new Vertex;
-            getVertex(v, strOneLine.substr(2));
-            vertices.push_back(v);
-        }
-        else if (strOneLine.at(0) == 'f' && strOneLine.at(1) == ' ') {
-            Face* f = new Face;
-            getFace(f, strOneLine.substr(2), vertices);
-            faces.push_back(f);
-        }
-    }
+    loadOBJFile("icoSphere.obj", vertices, faces);
 
     while(!main_disp.is_closed()) {
         main_disp.wait();
@@ -67,17 +53,38 @@ void getVertex(Vertex* v, std::string s) {
     v->z = std::stof(s.substr(bz)); 
 }
 
-void getFace(Face* f, std::string s, std::vector<Vertex*> vertices) {
+void getFace(Face* f, std::string s, std::vector<Vertex*>* vertices) {
     std::string::size_type az;
 
-    f->v1 = vertices[std::stoi(s)-1];
+    f->v1 = vertices->at(std::stoi(s)-1);
     s = s.substr(s.find(" ")+1);
 
-    f->v2 = vertices[std::stoi(s)-1];
+    f->v2 = vertices->at(std::stoi(s)-1);
     s = s.substr(s.find(" ")+1);
     
-    f->v3 = vertices[std::stoi(s)-1];
+    f->v3 = vertices->at(std::stoi(s)-1);
     s = s.substr(s.find(" ")+1);
+}
+
+void loadOBJFile(std::string s, std::vector<Vertex*>* vertices, std::vector<Face*>* faces) {
+    std::ifstream infile;
+    std::string readLine;
+    infile.open(s.c_str());
+
+    while(infile) {
+        std::getline(infile, readLine);
+        if (readLine.at(0) == 'v' && readLine.at(1) == ' ') {
+            Vertex* v = new Vertex;
+            getVertex(v, readLine.substr(2));
+            vertices->push_back(v);
+        }
+        else if (readLine.at(0) == 'f' && readLine.at(1) == ' ') {
+            Face* f = new Face;
+            getFace(f, readLine.substr(2), vertices);
+            faces->push_back(f);
+        }
+    }
+
 }
 
 void joinVertices(Vertex* v1, Vertex* v2, cimg_library::CImg<unsigned char> image) {
